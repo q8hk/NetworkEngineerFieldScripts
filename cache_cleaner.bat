@@ -32,9 +32,9 @@ if exist "%LOCALAPPDATA%\Opera Software\Opera Stable\Cache" (
     echo Opera not installed.
 )
 
-echo Deleting Windows temporary files...
-del /q /f /s "%TEMP%\*.*"
-echo Windows temporary files deleted.
+@REM echo Deleting Windows temporary files...
+@REM del /q /f /s "%TEMP%\*.*"
+@REM echo Windows temporary files deleted.
 
 echo Done!
 echo Press any key to close this window...
