@@ -1,0 +1,20 @@
+============================================================
+ IP Conflict Detector
+============================================================
+ Target IP      : 192.0.2.10
+ Started        : 2024-04-01 10:00:00
+ Hostname       : SAMPLEHOST
+ Runtime limit  : 60 seconds
+------------------------------------------------------------
+[1/60] Probing 192.0.2.10 ...
+  New MAC seen: 00-11-22-33-44-55
+[2/60] Probing 192.0.2.10 ...
+  New MAC seen: AA-BB-CC-DD-EE-FF
+  Multiple MACs observed for 192.0.2.10: 00-11-22-33-44-55 AA-BB-CC-DD-EE-FF
+------------------------------------------------------------
+ Result    : CONFLICT
+ Observed MAC(s): 00-11-22-33-44-55 AA-BB-CC-DD-EE-FF
+ Ping failures  : 0
+ Log file       : C:\Tools\logs\ip_conflict_20240401-100002_192.0.2.10.log
+ Finished       : 2024-04-01 10:00:02
+============================================================
