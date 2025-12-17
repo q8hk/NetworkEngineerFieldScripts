@@ -1,0 +1,23 @@
+============================================================
+ Network Snapshot
+============================================================
+ Host       : SAMPLEHOST
+ User       : engineer
+ Timestamp  : 2024-04-01 13:00:00
+------------------------------------------------------------
+### ipconfig /all
+Windows IP Configuration...
+### route print
+IPv4 Route Table...
+### arp -a
+Interface: 192.0.2.15 --- 0x13
+  Internet Address      Physical Address      Type
+  192.0.2.1             00-50-56-aa-bb-cc     dynamic
+### netsh interface ip show config
+Configuration for interface "Ethernet0"
+    DHCP enabled:                         Yes
+### netstat -ano
+Proto  Local Address          Foreign Address        State           PID
+------------------------------------------------------------
+ Result: HEALTHY
+============================================================
