@@ -66,11 +66,14 @@ function Launch-Tool {
     }
     Write-ToolkitLog ("Launching {0} {1}" -f $Entry.Name, ($ExtraArgs -join ' ')) -Path $LogPath
     if ($path -like "*.ps1") {
-        powershell -NoProfile -ExecutionPolicy Bypass -File $path @ExtraArgs
+        powershell -NoProfile -ExecutionPolicy Bypass -File $path @ExtraArgs | Out-Host
     } else {
-        & $path @ExtraArgs
+        & $path @ExtraArgs | Out-Host
     }
-    return $LASTEXITCODE
+    if ($null -eq $LASTEXITCODE) {
+        return 0
+    }
+    return [int]$LASTEXITCODE
 }
 
 if ($List) {
