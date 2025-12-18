@@ -22,7 +22,13 @@ if ($Help -or $args -contains '/?') {
 }
 
 $logPath = New-ToolkitLog -ToolName "tool_index" -KeyParts @()
-Write-ToolkitHeader -Title "Tool Index" -Path $logPath -Metadata @{Mode=($List ? "list" : ($Run ? "run" : "interactive"))}
+$mode = "interactive"
+if ($List) {
+    $mode = "list"
+} elseif ($Run) {
+    $mode = "run"
+}
+Write-ToolkitHeader -Title "Tool Index" -Path $logPath -Metadata @{Mode=$mode}
 
 $tools = @(
     @{Name="arp_watch_once.cmd"; Description="Observe ARP for a single IP"; Path="arp_watch_once.cmd"},

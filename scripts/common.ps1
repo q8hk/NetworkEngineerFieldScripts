@@ -5,7 +5,11 @@ Shared helpers for Network Engineer Field Toolkit PowerShell utilities.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not $Global:ToolkitRoot) {
+
+# Initialize ToolkitRoot without triggering strict mode errors when the variable
+# has not been defined yet.
+$toolkitRootVar = Get-Variable -Name ToolkitRoot -Scope Global -ErrorAction SilentlyContinue
+if (-not $toolkitRootVar -or -not $toolkitRootVar.Value) {
     $Global:ToolkitRoot = Split-Path -Parent $PSScriptRoot
 }
 
