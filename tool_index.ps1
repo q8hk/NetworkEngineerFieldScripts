@@ -36,6 +36,7 @@ $tools = @(
     @{Name="subnet_scan_lite.cmd"; Description="Lightweight subnet sweep"; Path="subnet_scan_lite.cmd"},
     @{Name="dhcp_renew_trace.cmd"; Description="DHCP renew with timing"; Path="dhcp_renew_trace.cmd"},
     @{Name="dhcp_lease_diff.ps1"; Description="Diff DHCP lease snapshots"; Path="dhcp_lease_diff.ps1"},
+    @{Name="ip_conflict_detect.cmd"; Description="Detect duplicate IP usage"; Path="ip_conflict_detect.cmd"},
     @{Name="nic_health.cmd"; Description="NIC health summary"; Path="nic_health.cmd"},
     @{Name="interface_flap_detect.cmd"; Description="Monitor link flaps"; Path="interface_flap_detect.cmd"},
     @{Name="dns_truth.cmd"; Description="Compare DNS answers"; Path="dns_truth.cmd"},
