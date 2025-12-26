@@ -20,6 +20,51 @@ $Global:ToolkitExitCodes = @{
     Failure = 3
 }
 
+function Get-ToolkitBranchCandidates {
+    [OutputType([string[]])]
+    param(
+        [string]$RepositoryPath = $Global:ToolkitRoot
+    )
+    $candidates = New-Object System.Collections.Generic.List[string]
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git -and (Test-Path -LiteralPath $RepositoryPath)) {
+        try {
+            $branch = & $git.Path -C $RepositoryPath rev-parse --abbrev-ref HEAD
+            if ($LASTEXITCODE -eq 0 -and $branch -and $branch.Trim() -ne "HEAD") {
+                $candidates.Add($branch.Trim()) | Out-Null
+            }
+        } catch {
+            # Continue to other discovery methods
+        }
+        try {
+            $originHead = & $git.Path -C $RepositoryPath symbolic-ref --short refs/remotes/origin/HEAD
+            if ($LASTEXITCODE -eq 0 -and $originHead -match '^origin/(.+)$') {
+                $candidates.Add($matches[1]) | Out-Null
+            }
+        } catch {
+            # Continue to fallbacks
+        }
+    }
+    foreach ($fallback in @("master", "main")) {
+        if (-not $candidates.Contains($fallback)) {
+            $candidates.Add($fallback) | Out-Null
+        }
+    }
+    return $candidates.ToArray()
+}
+
+function Get-ToolkitBranch {
+    [OutputType([string])]
+    param(
+        [string]$RepositoryPath = $Global:ToolkitRoot
+    )
+    $candidates = Get-ToolkitBranchCandidates -RepositoryPath $RepositoryPath
+    if ($candidates.Count -gt 0) {
+        return $candidates[0]
+    }
+    return "main"
+}
+
 function Get-ToolkitVersion {
     [OutputType([hashtable])]
     param(
@@ -61,29 +106,63 @@ function Get-ToolkitVersion {
 function Get-ToolkitRemoteVersion {
     [OutputType([hashtable])]
     param(
-        [string]$Branch = "main"
+        [string]$Branch
     )
+    $branchCandidates = @()
+    if ($Branch) { $branchCandidates += $Branch }
+    $branchCandidates += Get-ToolkitBranchCandidates
+    $branchCandidates = $branchCandidates | Where-Object { $_ } | Select-Object -Unique
     $headers = @{ "User-Agent" = "NetworkEngineerFieldScripts-UpdateCheck" }
-    $uri = "https://api.github.com/repos/q8hk/NetworkEngineerFieldScripts/commits/$Branch"
-    $response = Invoke-RestMethod -Uri $uri -Headers $headers -ErrorAction Stop
-    $timestamp = $null
-    if ($response.commit -and $response.commit.committer -and $response.commit.committer.date) {
-        $timestamp = Get-Date $response.commit.committer.date
+    $errors = New-Object System.Collections.Generic.List[string]
+    foreach ($candidate in $branchCandidates) {
+        $uri = "https://api.github.com/repos/q8hk/NetworkEngineerFieldScripts/commits/$candidate"
+        try {
+            $response = Invoke-RestMethod -Uri $uri -Headers $headers -ErrorAction Stop
+            $timestamp = $null
+            if ($response.commit -and $response.commit.committer -and $response.commit.committer.date) {
+                $timestamp = Get-Date $response.commit.committer.date
+            }
+            return @{
+                Revision  = $response.sha.Substring(0, 7)
+                Timestamp = $timestamp
+                Url       = $response.html_url
+                Branch    = $candidate
+            }
+        } catch {
+            $statusCode = $null
+            if ($_.Exception -and $null -ne $($_.Exception.Response)) {
+                $resp = $_.Exception.Response
+                if ($resp -is [System.Net.HttpWebResponse]) {
+                    $statusCode = [int]$resp.StatusCode
+                }
+            } elseif ($_.Exception.PSObject.Properties.Match("StatusCode")) {
+                $statusCodeValue = $_.Exception.StatusCode
+                if ($statusCodeValue -is [System.Net.HttpStatusCode]) {
+                    $statusCode = [int]$statusCodeValue
+                } elseif ($statusCodeValue -is [int]) {
+                    $statusCode = $statusCodeValue
+                }
+            }
+            if ($statusCode -in @(404, 422)) {
+                $errors.Add(("Branch '{0}' not found: {1}" -f $candidate, $_.Exception.Message)) | Out-Null
+                continue
+            }
+            throw
+        }
     }
-    return @{
-        Revision  = $response.sha.Substring(0, 7)
-        Timestamp = $timestamp
-        Url       = $response.html_url
-        Branch    = $Branch
-    }
+    $errorMsg = "Could not determine remote version. Attempts: " + ($errors -join "; ")
+    throw (New-Object System.Exception $errorMsg)
 }
 
 function Invoke-ToolkitUpdate {
     param(
-        [string]$Branch = "main",
+        [string]$Branch,
         [string]$RepositoryUrl = "https://github.com/q8hk/NetworkEngineerFieldScripts",
         [string]$LogPath
     )
+    if (-not $Branch) {
+        $Branch = Get-ToolkitBranch
+    }
     $git = Get-Command git -ErrorAction SilentlyContinue
     if (-not $git) {
         Write-ToolkitLog "git is not available in PATH; cannot update automatically." -Path $LogPath
@@ -112,10 +191,13 @@ function Invoke-ToolkitUpdate {
 
 function Invoke-ToolkitUpdateCheck {
     param(
-        [string]$Branch = "main",
+        [string]$Branch,
         [string]$LogPath,
         [switch]$Prompt = $true
     )
+    if (-not $Branch) {
+        $Branch = Get-ToolkitBranch
+    }
     $localVersion = Get-ToolkitVersion
     if ($localVersion.Revision) {
         $localMsg = "Current version: $($localVersion.Revision)"
@@ -129,9 +211,10 @@ function Invoke-ToolkitUpdateCheck {
     try {
         $remoteVersion = Get-ToolkitRemoteVersion -Branch $Branch
     } catch {
-        Write-ToolkitLog ("Online update check failed: {0}" -f $_.Exception.Message) -Path $LogPath
+        Write-ToolkitLog ("Online update check failed for branch '{0}': {1}" -f $Branch, $_.Exception.Message) -Path $LogPath
         return
     }
+    $Branch = $remoteVersion.Branch
     if (-not $remoteVersion.Revision) {
         Write-ToolkitLog "Could not determine remote version." -Path $LogPath
         return
@@ -157,7 +240,7 @@ function Invoke-ToolkitUpdateCheck {
         Write-ToolkitLog "Skipping update." -Path $LogPath
         return
     }
-    $applied = Invoke-ToolkitUpdate -Branch $Branch -LogPath $LogPath
+    $applied = Invoke-ToolkitUpdate -Branch $remoteVersion.Branch -LogPath $LogPath
     if ($applied) {
         $updatedVersion = Get-ToolkitVersion
         $versionMsg = "Toolkit updated successfully to $($updatedVersion.Revision)"
