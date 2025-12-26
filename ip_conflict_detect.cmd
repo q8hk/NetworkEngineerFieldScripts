@@ -41,6 +41,7 @@ set "PING_FAILURES=0"
 for /L %%S in (1,1,%MAX_SECONDS%) do (
     call :tick %%S
     if "!RESULT!"=="CONFLICT" goto :finish_loop
+    timeout /t 1 /nobreak >nul
 )
 
 :finish_loop
