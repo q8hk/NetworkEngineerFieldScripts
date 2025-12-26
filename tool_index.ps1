@@ -28,7 +28,10 @@ if ($List) {
 } elseif ($Run) {
     $mode = "run"
 }
+$promptForUpdate = ($mode -eq "interactive")
 Write-ToolkitHeader -Title "Tool Index" -Path $logPath -Metadata @{Mode=$mode}
+
+Invoke-ToolkitUpdateCheck -Branch "main" -LogPath $logPath -Prompt:$promptForUpdate
 
 $tools = @(
     @{Name="arp_watch_once.cmd"; Description="Observe ARP for a single IP"; Path="arp_watch_once.cmd"},
